@@ -1,0 +1,3 @@
+Before and after are reconstructed together: VGGT-Omega is run once on all 40 frames (20 before, then 20 after) so both videos share one coordinate frame (defined by the first before frame's camera), and the results are split by video afterwards.
+Frames are key frames: the sharpest frame (variance of Laplacian) in each of 20 equal time bins, at least 7 frames after the previous pick, so every frame is sharp for reconstruction while the even time spacing keeps overlap between neighbouring views.
+Finer TSDF voxel to try: the current voxel (0.005, about 1/200 of the scene width) may lose small objects, so test a smaller voxel and check that small objects survive.

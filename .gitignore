@@ -1,0 +1,9 @@
+repos/
+data/
+outputs/
+sandbox/
+.venv/
+__pycache__/
+*.pyc
+_trash/
+output/
