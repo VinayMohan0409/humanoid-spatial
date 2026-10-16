@@ -4,9 +4,9 @@ import numpy as np
 import open3d as o3d
 
 from config import (
-    DEPTH_SCALE,
-    DEPTH_TRUNC,
+    FAR_DEPTH_FACTOR,
     KEEP_FRACTIONS,
+    RECON_DIR,
     SDF_TRUNC,
     TSDF_DIR,
     VIDEOS,
@@ -17,6 +17,12 @@ from point_clouds import load_reconstruction
 
 TRUNC_MULTIPLIER = SDF_TRUNC / VOXEL_SIZE
 DEVICE = o3d.core.Device("CPU:0")
+DEPTH_SCALE = 1.0  # depth goes in as float32, so it needs no rescaling
+
+
+def median_depth():
+    """Return the median depth over both videos, the scale that also sets the voxel size."""
+    return float(np.median(np.concatenate([np.load(RECON_DIR / f"{name}.npz")["depth"].ravel() for name in VIDEOS])))
 
 
 def keep_mask(conf, keep):
@@ -49,31 +55,28 @@ def to_4x4(extrinsic):
     return matrix
 
 
-def integrate_frame(volume, image, depth, mask, intrinsic, extrinsic):
-    """Integrate one frame into the volume, treating masked-out (low-confidence) depth as invalid."""
-    depth = np.where(mask, depth[..., 0], 0.0)
-    depth_u16 = np.ascontiguousarray((depth * DEPTH_SCALE).round().astype(np.uint16))[..., None]
-    color_u8 = np.ascontiguousarray(image.transpose(1, 2, 0))
+def integrate_frame(volume, image, depth, mask, intrinsic, extrinsic, far_limit):
+    """Integrate one frame into the volume, treating masked-out (low-confidence) depth and depth beyond far_limit as invalid."""
+    depth = np.where(mask, depth[..., 0], 0.0).astype(np.float32)[..., None]
+    color = (image.transpose(1, 2, 0) / 255.0).astype(np.float32)  # Open3D needs float colour to go with float depth
 
-    depth_img = o3d.t.geometry.Image(o3d.core.Tensor(depth_u16))
-    color_img = o3d.t.geometry.Image(o3d.core.Tensor(color_u8))
+    depth_img = o3d.t.geometry.Image(o3d.core.Tensor(np.ascontiguousarray(depth)))
+    color_img = o3d.t.geometry.Image(o3d.core.Tensor(np.ascontiguousarray(color)))
     K = o3d.core.Tensor(intrinsic.astype(np.float64))
     E = o3d.core.Tensor(to_4x4(extrinsic))
 
-    coords = volume.compute_unique_block_coordinates(depth_img, K, E, DEPTH_SCALE, DEPTH_TRUNC, TRUNC_MULTIPLIER)
-    volume.integrate(coords, depth_img, color_img, K, K, E, DEPTH_SCALE, DEPTH_TRUNC, TRUNC_MULTIPLIER)
+    coords = volume.compute_unique_block_coordinates(depth_img, K, E, DEPTH_SCALE, far_limit, TRUNC_MULTIPLIER)
+    volume.integrate(coords, depth_img, color_img, K, K, E, DEPTH_SCALE, far_limit, TRUNC_MULTIPLIER)
 
 
-def fuse_video(name, keep):
+def fuse_video(name, keep, far_limit):
     """Fuse all frames of a video at the given keep-fraction and save it to cloud_path(name, keep)."""
     recon = load_reconstruction(name)
     mask = keep_mask(recon["depth_conf"], keep)
 
     volume = make_volume()
     for i in range(len(mask)):
-        integrate_frame(
-            volume, recon["images"][i], recon["depth"][i], mask[i], recon["intrinsic"][i], recon["extrinsic"][i]
-        )
+        integrate_frame(volume, recon["images"][i], recon["depth"][i], mask[i], recon["intrinsic"][i], recon["extrinsic"][i], far_limit)
 
     cloud = volume.extract_point_cloud(weight_threshold=WEIGHT_THRESHOLD).to_legacy()
     TSDF_DIR.mkdir(parents=True, exist_ok=True)
@@ -83,7 +86,9 @@ def fuse_video(name, keep):
 
 
 def fuse_all():
-    """Run TSDF fusion for every video and keep-fraction."""
+    """Run TSDF fusion for every video and keep-fraction, with one far-depth limit shared by both videos."""
+    far_limit = FAR_DEPTH_FACTOR * median_depth()
+    print(f"ignoring depth beyond {far_limit:.2f} ({FAR_DEPTH_FACTOR:g} x median depth)")
     for name in VIDEOS:
         for keep in KEEP_FRACTIONS:
-            fuse_video(name, keep)
+            fuse_video(name, keep, far_limit)

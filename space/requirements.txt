@@ -1,0 +1,13 @@
+plotly
+numpy<2
+scipy
+open3d
+opencv-python-headless
+transformers
+einops
+safetensors
+Pillow
+spaces
+torch
+torchvision
+vggt-omega @ git+https://github.com/facebookresearch/vggt-omega@48b23c8ce72c9a8fcf987f0d7f43d8e4870759f6

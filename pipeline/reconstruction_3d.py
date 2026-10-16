@@ -24,8 +24,8 @@ def get_device():
 
 
 def load_model(device):
-    """Load VGGT-Omega with its cached checkpoint onto the device."""
-    path = hf_hub_download(CHECKPOINT_REPO, CHECKPOINT_FILE, local_files_only=True)
+    """Load VGGT-Omega with its checkpoint (from the local cache if present) onto the device."""
+    path = hf_hub_download(CHECKPOINT_REPO, CHECKPOINT_FILE)
     model = VGGTOmega(autocast=False).eval()  # the autocast path is CUDA-only
     model.load_state_dict(torch.load(path, map_location="cpu"))
     return model.to(device)

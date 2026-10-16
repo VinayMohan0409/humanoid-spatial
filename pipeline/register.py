@@ -1,9 +1,11 @@
-"""Registration stage: aligns the after cloud to the before cloud with point-to-plane ICP and saves before (pale green), unaligned after (pale red) and aligned after (pale blue) for inspection."""
+"""Registration stage: aligns the after cloud to the before cloud with point-to-plane ICP checks that the correction is small, and saves before (pale green), unaligned after (pale red) and aligned after (pale blue) for inspection."""
+
+import json
 
 import numpy as np
 import open3d as o3d
 
-from config import ALIGNMENT_DIR, ICP_MAX_DISTANCE, ICP_MAX_ITER, KEEP_FRACTIONS
+from config import ALIGNMENT_DIR, ICP_MAX_DISTANCE, ICP_MAX_ITER, ICP_MAX_ROTATION, ICP_MAX_SHIFT, KEEP_FRACTIONS
 from preprocess import AFTER_COLOR, BEFORE_COLOR, preprocess_point_cloud
 from tsdf import cloud_path
 
@@ -36,11 +38,18 @@ def export_registration(keep=KEEP_FRACTIONS[0]):
 
     T = result.transformation
     angle = np.degrees(np.arccos(np.clip((np.trace(T[:3, :3]) - 1) / 2, -1, 1)))
-    print(f"fitness {result.fitness:.3f}  inlier RMSE {result.inlier_rmse:.5f}  "
-          f"shift {np.linalg.norm(T[:3, 3]):.4f}  rotation {angle:.2f} deg")
+    shift = float(np.linalg.norm(T[:3, 3]))
+    print(f"fitness {result.fitness:.3f}  inlier RMSE {result.inlier_rmse:.5f}  shift {shift:.4f}  rotation {angle:.2f} deg")
 
     ALIGNMENT_DIR.mkdir(parents=True, exist_ok=True)
     for name, cloud, color in (("before", before, BEFORE_COLOR), ("after", after, AFTER_COLOR), ("after_aligned", aligned, ALIGNED_COLOR)):
         cloud.paint_uniform_color(color)
         o3d.io.write_point_cloud(str(ALIGNMENT_DIR / f"{name}.ply"), cloud)
     np.save(ALIGNMENT_DIR / "after_to_before.npy", T)
+
+    ok = shift <= ICP_MAX_SHIFT and angle <= ICP_MAX_ROTATION
+    (ALIGNMENT_DIR / "registration.json").write_text(json.dumps({"fitness": result.fitness, "inlier_rmse": result.inlier_rmse, "shift": shift, "rotation_deg": float(angle),
+                                                                  "max_shift": ICP_MAX_SHIFT, "max_rotation_deg": ICP_MAX_ROTATION, "passed": bool(ok)}, indent=2))
+    if not ok:  # the videos are reconstructed together, so ICP should only polish; a big correction means they did not land in one coordinate frame
+        raise RuntimeError(f"alignment failed: ICP moved the after cloud by {shift:.4f} (limit {ICP_MAX_SHIFT:.4f}) and rotated it {angle:.2f} deg (limit {ICP_MAX_ROTATION} deg), "
+                           "so the before and after reconstructions probably did not share a coordinate frame and every change found would be unreliable")

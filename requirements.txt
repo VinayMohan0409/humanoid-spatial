@@ -1,0 +1,16 @@
+# Tested with Python 3.11.9 on macOS (Apple MPS); the Hugging Face Space runs Python 3.12 on CUDA.
+numpy>=1.26,<2
+scipy>=1.13
+open3d>=0.19
+opencv-python>=4.9
+torch>=2.6
+torchvision>=0.21
+transformers>=5.0
+huggingface_hub>=1.0
+einops
+safetensors
+Pillow
+imageio-ffmpeg
+# VGGT-Omega: code under the FAIR Noncommercial Research License; the weights are gated (see EXTERNAL_REPOS.md)
+vggt-omega @ git+https://github.com/facebookresearch/vggt-omega@48b23c8ce72c9a8fcf987f0d7f43d8e4870759f6
+# Demo only (space/): gradio==6.30.0, plotly, spaces

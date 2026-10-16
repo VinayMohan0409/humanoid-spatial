@@ -14,8 +14,8 @@ STD = torch.tensor([0.229, 0.224, 0.225]).view(3, 1, 1)
 
 
 def load_model(device):
-    """Load the cached DINOv3 model onto the device."""
-    return AutoModel.from_pretrained(DINO_MODEL, local_files_only=True).to(device).eval()
+    """Load the DINOv3 model (from the local cache if present) onto the device."""
+    return AutoModel.from_pretrained(DINO_MODEL).to(device).eval()
 
 
 def frame_features(model, image, device):

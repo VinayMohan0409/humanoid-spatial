@@ -2,6 +2,7 @@
 
 import numpy as np
 import open3d as o3d
+from scipy.spatial import cKDTree
 
 from config import DINO_DIR, FEATURES_DIR, KEEP_FRACTIONS, VIDEOS, VISIBILITY_TOL
 from features import PATCH_SIZE
@@ -60,6 +61,8 @@ def attach_features(name):
     agreement = np.linalg.norm(mean_feature, axis=1)  # 1 means every view gave the same feature direction
     features = np.zeros_like(feature_sum)
     features[seen] = mean_feature / agreement[:, None]
+    if seen.any() and not seen.all():  # a point that no frame saw consistently has no feature; give it its nearest seen point's, so no later stage meets a zero vector
+        features[~seen] = features[seen][cKDTree(points[seen]).query(points[~seen])[1]]
     spread = np.zeros(len(points))
     spread[seen] = 1 - agreement
 

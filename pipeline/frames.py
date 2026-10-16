@@ -5,7 +5,7 @@ import json
 import cv2
 import numpy as np
 
-from config import DATA, FRAMES_DIR, MIN_GAP_FRAMES, N_BINS, VIDEO_FILES, VIDEOS
+from config import BIN_SECONDS, DATA, FRAMES_DIR, MAX_BINS, MIN_BINS, MIN_GAP_FRAMES, VIDEO_FILES, VIDEOS
 
 
 def sharpness(frame):
@@ -31,6 +31,7 @@ def score_frames(video_path):
 def pick_indices(scores, n_bins, min_gap):
     """Pick one frame index per time bin: the sharpest one at least min_gap frames after the previous pick."""
     edges = np.linspace(0, len(scores), n_bins + 1).astype(int)
+    min_gap = min(min_gap, len(scores) // n_bins // 2)  # keep the gap well below the bin length
     picks = []
     prev = -min_gap
     for b in range(n_bins):
@@ -56,13 +57,19 @@ def read_frames(video_path, indices):
     return found
 
 
-def extract_frames(name, n_bins=N_BINS, min_gap=MIN_GAP_FRAMES):
+def choose_n_bins(n_frames, fps):
+    """Return the number of time bins for a video: one per BIN_SECONDS of footage, kept between MIN_BINS and MAX_BINS."""
+    return int(np.clip(round(n_frames / fps / BIN_SECONDS), MIN_BINS, MAX_BINS))
+
+
+def extract_frames(name, n_bins=None, min_gap=MIN_GAP_FRAMES):
     """Select and save the chosen frames of one video as JPEGs, and write index.json."""
     out_dir = FRAMES_DIR / name
     out_dir.mkdir(parents=True, exist_ok=True)
     video_path = DATA / VIDEO_FILES[name]
 
     scores, fps = score_frames(video_path)
+    n_bins = n_bins or choose_n_bins(len(scores), fps)
     picks = pick_indices(scores, n_bins, min_gap)
     images = read_frames(video_path, picks)
 
