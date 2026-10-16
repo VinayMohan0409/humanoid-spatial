@@ -4,7 +4,7 @@ Two phone videos of the same room go in; every **moved**, **added** or **removed
 
 ![Pipeline demo](docs/demo.gif)
 
-<sup>From the two videos to a shared 3D scene, the detected changes and their labels. Full-quality video: [docs/demo.mp4](docs/demo.mp4).</sup>
+<sup>From two videos to a shared 3D scene, the detected changes and their labels. Full-quality video: [docs/demo.mp4](docs/demo.mp4).</sup>
 
 - **Live demo:** [huggingface.co/spaces/Vinay0409/humanoid-spatial](https://huggingface.co/spaces/Vinay0409/humanoid-spatial) (browse the examples, or upload your own pair of videos). Sign in to Hugging Face first: logged-in users get a larger free GPU quota for uploads.
 
