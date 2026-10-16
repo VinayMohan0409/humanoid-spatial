@@ -1,6 +1,10 @@
 # Humanoid Challenge: Spatial AI and Navigation
 
-Compares two phone videos of the same area and finds objects that were **moved**, **added** or **removed**, in 3D, and names each one.
+Two phone videos of the same room go in; every **moved**, **added** or **removed** object comes out, found in 3D and named.
+
+![Pipeline demo](docs/demo.gif)
+
+<sup>From the two videos to a shared 3D scene, the detected changes and their labels. Full-quality video: [docs/demo.mp4](docs/demo.mp4).</sup>
 
 - **Live demo:** [huggingface.co/spaces/Vinay0409/humanoid-spatial](https://huggingface.co/spaces/Vinay0409/humanoid-spatial) (browse the examples, or upload your own pair of videos). Sign in to Hugging Face first: logged-in users get a larger free GPU quota for uploads.
 
@@ -67,12 +71,13 @@ python pipeline/main.py before.mp4 after.mp4 --name my_scene
   - `verdicts.json`: every changed object with its verdict, centroid, label and the sentences
   - `labels/`: the crops the VLM was shown
 - Filming: move, add or remove a few objects between takes, film from different viewpoints, and keep enough overlap.
+- `space/` is the Hugging Face demo (Gradio); `build_space.py` copies the pipeline and finished scenes into it.
 
 ## Limitations and future work
 
 - These are limits of a time-boxed project, not of the idea.
-- **False positives and false negatives remain** (see the results table: extra removed or added objects in `glass_table`, `living_room` and `workstation`, a missed move in `desk` and `dining_table`). The thresholds still need fine-tuning on more scenes.
-- **Small, low-contrast objects can be missed.** DINOv3 patches are 16 px, so a small dark object on a pale desk blends into its surroundings and is dropped as an empty footprint (the mouse on `desk`). Future work: let the vision-language model confirm candidates, or point at objects directly, and use those as seeds for grouping.
+- **False positives and false negatives remain** (see the examples: an extra object in `glass_table`, `living_room` and `workstation`, a missed move in `desk` and `dining_table`). The thresholds still need fine-tuning on more scenes.
+- **Small, low-contrast objects can be missed.** DINOv3 works on image patches, so a small dark object on a pale desk blends into its surroundings and is dropped as an empty footprint (the mouse on `desk`). Future work: let the vision-language model confirm candidates, or point at objects directly, and use those as seeds for grouping.
 - **Fragmented objects.** An object that segmentation splits can be reported as several changes. Future work: merge fragments using the model's labels.
 - **Labels are one word,** so they can be vague or truncated ("coca" for a cola bottle). Future work: allow short phrases, vote over more views.
 

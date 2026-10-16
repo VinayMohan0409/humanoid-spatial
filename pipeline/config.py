@@ -51,13 +51,11 @@ CHROMA_MAX = 20.0  # Lab a,b distance drawn fully red in the appearance map
 Z_STRONG = 3.5  # robust z-score of feature dissimilarity that alone marks an appearance change
 Z_WEAK = 2.0  # lower z-score that counts when feature and chroma both reach it
 UNIT_FLAG_SHARE = 0.3  # share of a unit's points flagged as changed (or median z above Z_WEAK) for it to count as changed
-IDENTITY_MIN = 0.62  # lowest identity score accepted as the same object in both videos (true pairs 0.66+, others 0.58 or less on our three scenes)
+IDENTITY_MIN = 0.62  # lowest identity score accepted as the same object in both videos (true pairs 0.66+, others 0.58 or less on our scenes)
 DINO_MIN = 0.75  # lowest pooled DINO cosine for two units to be the same object (true pairs 0.86+, a false pair 0.45 on our scenes)
 ABSORB_MAX_RATIO = 8  # a change region is absorbed into the segment it lies in only if that segment has at most this many times its points
 RING_RADIUS = 6 * VOXEL_SIZE  # a unit's surroundings are the points within this distance of it
-RING_MAX = 0.92  # (mean test, kept for comparison)
-RING_POINT_SIM = 0.9  # a unit point whose feature has cosine below this to the surroundings' mean is distinct from them
-RING_DISTINCT_SHARE = 0.3  # a unit with a smaller share of distinct points is an empty footprint, not an object (the same share as UNIT_FLAG_SHARE)  # a unit whose feature is more similar than this to its surroundings is an empty footprint, not an object
+RING_MAX = 0.92  # a unit whose feature is more similar than this to its surroundings is an empty footprint, not an object
 CHROMA_BINS = 12  # bins per axis of the Lab a,b histogram in an object descriptor
 SMOOTH_K = 12  # neighbours in the majority filter that removes speckle from the change flags
 

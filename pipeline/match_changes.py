@@ -12,12 +12,11 @@ from appearance import lab_ab
 from attach import project
 from change_regions import change_regions
 from compare import COLORS, aligned_points, load_video
-from config import ABSORB_MAX_RATIO, CHECK_FRAME, CHROMA_BINS, DINO_MIN, IDENTITY_MIN, MOVE_DISTANCE, OBJECT_LINK_SIM, OBJECT_MIN_POINTS, OUTPUT, RING_DISTINCT_SHARE, RING_MAX, RING_POINT_SIM, RING_RADIUS, UNIT_FLAG_SHARE, VISIBILITY_TOL, Z_WEAK
+from config import ABSORB_MAX_RATIO, CHECK_FRAME, CHROMA_BINS, DINO_MIN, IDENTITY_MIN, MOVE_DISTANCE, OBJECT_LINK_SIM, OBJECT_MIN_POINTS, OUTPUT, RING_MAX, RING_RADIUS, UNIT_FLAG_SHARE, VISIBILITY_TOL, Z_WEAK
 from point_clouds import make_cloud
 from segment import render_check
 
 OVERLAY_COLORS = {"moved": (0.1, 0.3, 1.0), "added": (0.1, 0.85, 0.2), "removed": (1.0, 0.1, 0.1)}  # vivid, to stand out against the true colours
-RING_MODE = "mean"  # "mean": a unit is an empty footprint if its mean feature matches its surroundings'; "points": if few of its own points differ from them (finds more small objects, but also false ones; tested on desk, dining_table and living_room)
 OVERLAY_ALPHA = 0.5  # share of the verdict colour blended over a changed unit's true colour
 
 
@@ -65,15 +64,6 @@ def surrounding_similarity(video, tree, indices, feature):
     return 0.0 if ring is None else float(ring @ feature)
 
 
-def distinct_share(video, tree, indices):
-    """Return the share of a unit's points whose own feature differs from the surroundings' mean (cosine below RING_POINT_SIM). An empty footprint is surface like its surroundings, so almost no point differs; an object has many that do, even when its mean is diluted by patch blur or by neighbouring fragments of itself."""
-    ring = ring_features(video, tree, indices)
-    if ring is None:
-        return 1.0
-    f = video["features"][indices]
-    return float(((f @ ring) / np.linalg.norm(f, axis=1) < RING_POINT_SIM).mean())
-
-
 def build_units(video, evidence, common_points):
     """Return the changed units of a video (segments and flat change regions that differ from their surroundings) with their points, evidence and descriptor; common_points is the video's cloud in before's coordinates."""
     ids, tree = unit_ids(video, evidence), KDTree(video["points"])
@@ -89,11 +79,10 @@ def build_units(video, evidence, common_points):
             continue
         descriptor = describe(video, indices, video["points"])
         ring = surrounding_similarity(video, tree, indices, descriptor["feature"])
-        distinct = distinct_share(video, tree, indices)
         both_evidence = evidence["geometric"][indices].mean() >= UNIT_FLAG_SHARE and z >= Z_WEAK  # partly seen through by the other video and clearly different where still matched: an empty footprint is surface present in both videos, so it cannot have both
-        if both_evidence or ((distinct >= RING_DISTINCT_SHARE) if RING_MODE == "points" else (ring <= RING_MAX)):
+        if both_evidence or ring <= RING_MAX:
             units.append({"id": int(u), "indices": indices, "n": len(indices), "centroid": common_points[indices].mean(axis=0),
-                          "flagged": flagged, "geometric": evidence["geometric"][indices].mean(), "z": z, "ring": ring, "distinct": distinct, **descriptor})
+                          "flagged": flagged, "geometric": evidence["geometric"][indices].mean(), "z": z, "ring": ring, **descriptor})
     return units
 
 
@@ -159,7 +148,7 @@ def split_moved(units, verdict, pairs, videos, common, evidence):
             unit.update({"indices": kept, "n": len(kept), "centroid": common[side][kept].mean(axis=0), **describe(videos[side], kept, videos[side]["points"])})
             units[side].append({"id": next_id[side], "indices": leftover, "n": len(leftover), "centroid": common[side][leftover].mean(axis=0),
                                 "flagged": evidence[side]["changed"][leftover].mean(), "geometric": evidence[side]["geometric"][leftover].mean(), "z": unit["z"],
-                                "ring": 0.0, "distinct": 1.0, **describe(videos[side], leftover, videos[side]["points"])})
+                                "ring": 0.0, **describe(videos[side], leftover, videos[side]["points"])})
             verdict[side].append("removed" if side == "before" else "added")
             next_id[side] += 1
 
