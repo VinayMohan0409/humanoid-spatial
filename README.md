@@ -9,29 +9,7 @@ Compares two phone videos of the same area and finds objects that were **moved**
 - **Eight scenes.** Two are my own phone recordings (`desk`, `dining_table`). The other six (`scene_diff_*`) come from the public [SceneDiff benchmark](https://huggingface.co/datasets/yuqun/SceneDiff) (Wu et al., ECCV 2026, MIT licence), added to check the pipeline on videos I did not film. I used six sequence pairs, re-encoded with metadata removed. The full dataset is not included.
 - Each image, left to right: the original frame, the verdict, and the verdict with labels. Before on top, after below. Blue = moved, green = added, red = removed; unchanged points keep their true colours.
 
-![desk](docs/desk.jpg)
-![scene_diff_living_room](docs/scene_diff_living_room.jpg)
-
-- Each scene also gets a plain-English change list (`changes.txt`). For `desk`:
-  - A massager was removed.
-  - A bottle was added.
-  - A pencil was added.
-
-- All 8 scenes, with the labels the vision-language model gave (m / r / a = moved / removed / added). Expected counts are hand-read from the videos.
-
-| Scene | Expected m / r / a | Found m / r / a | Moved | Removed | Added |
-|---|---|---|---|---|---|
-| desk | 1 / 1 / 2 | 0 / 1 / 2 | - | massager | bottle, pencil |
-| dining_table | 3 / 0 / 2 | 2 / 0 / 3 | teddy, tissue | - | clock, staircase, water |
-| scene_diff_cabinet | 0 / 1 / 1 | 0 / 1 / 1 | - | bottle | coconut |
-| scene_diff_coffee_table | 1 / 1 / 0 | 1 / 1 / 0 | coffee | cup | - |
-| scene_diff_glass_table | 1 / 1 / 1 | 1 / 2 / 2 | cup | glass, pen | candy, cup |
-| scene_diff_living_room | 2 / 2 / 2 | 2 / 3 / 2 | remote, remote | cork, tissue, unknown | bread, pineapple |
-| scene_diff_living_room_2 | 0 / 1 / 1 | 0 / 1 / 1 | - | scale | bag |
-| scene_diff_workstation | 0 / 1 / 2 | 0 / 3 / 3 | - | coca, water, window | laptop, mouse, unknown |
-
-- Counts match on 3 of 8 scenes and are within one on 2 more. The labels are mostly right ("mouse", "bottle", "pineapple", "remote"); a few are off ("staircase", "window", "coca"), since the model answers with a single word.
-- All 8 scenes are shown at the end of this page.
+- Examples are shown at the bottom of this page.
 
 ## How it works
 
@@ -108,18 +86,9 @@ python pipeline/main.py before.mp4 after.mp4 --name my_scene
 
 ## All example results
 
-- Same layout in every image, left to right: the original frame, the verdict, and the verdict with labels. Before on top, after below. Blue = moved, green = added, red = removed.
 - Labels come from a small vision-language model and are sometimes wrong. The change list under each image is its plain-English output.
 
-### desk (own recording)
-
-![desk](docs/desk.jpg)
-
-- A massager was removed.
-- A bottle was added.
-- A pencil was added.
-
-### dining_table (own recording)
+### Dining table
 
 ![dining_table](docs/dining_table.jpg)
 
@@ -129,21 +98,43 @@ python pipeline/main.py before.mp4 after.mp4 --name my_scene
 - A clock was added.
 - A staircase was added.
 
-### scene_diff_cabinet (SceneDiff)
+### Living room
+
+![scene_diff_living_room](docs/scene_diff_living_room.jpg)
+
+- The tissue was moved.
+- An unidentified object was removed.
+- An orange was removed.
+- The remote was moved.
+- A tissue was removed.
+- A cork was removed.
+- An orange was removed.
+- A pineapple was added.
+- A bread was added.
+
+### Desk
+
+![desk](docs/desk.jpg)
+
+- A massager was removed.
+- A bottle was added.
+- A pencil was added.
+
+### Cabinet
 
 ![scene_diff_cabinet](docs/scene_diff_cabinet.jpg)
 
 - A bottle was removed.
 - A coconut was added.
 
-### scene_diff_coffee_table (SceneDiff)
+### Coffee table
 
 ![scene_diff_coffee_table](docs/scene_diff_coffee_table.jpg)
 
 - A cup was removed.
 - The coffee was moved.
 
-### scene_diff_glass_table (SceneDiff)
+### Glass table
 
 ![scene_diff_glass_table](docs/scene_diff_glass_table.jpg)
 
@@ -153,26 +144,14 @@ python pipeline/main.py before.mp4 after.mp4 --name my_scene
 - A cup was added.
 - A candy was added.
 
-### scene_diff_living_room (SceneDiff)
-
-![scene_diff_living_room](docs/scene_diff_living_room.jpg)
-
-- The remote was moved.
-- An unidentified object was removed.
-- The remote was moved.
-- A tissue was removed.
-- A cork was removed.
-- A pineapple was added.
-- A bread was added.
-
-### scene_diff_living_room_2 (SceneDiff)
+### Living room 2
 
 ![scene_diff_living_room_2](docs/scene_diff_living_room_2.jpg)
 
 - A scale was removed.
 - A bag was added.
 
-### scene_diff_workstation (SceneDiff)
+### Workstation
 
 ![scene_diff_workstation](docs/scene_diff_workstation.jpg)
 

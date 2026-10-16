@@ -12,7 +12,7 @@ from appearance import lab_ab
 from attach import project
 from change_regions import change_regions
 from compare import COLORS, aligned_points, load_video
-from config import ABSORB_MAX_RATIO, CHECK_FRAME, CHROMA_BINS, DINO_MIN, IDENTITY_MIN, MOVE_DISTANCE, OBJECT_MIN_POINTS, OUTPUT, RING_DISTINCT_SHARE, RING_MAX, RING_POINT_SIM, RING_RADIUS, UNIT_FLAG_SHARE, VISIBILITY_TOL, Z_WEAK
+from config import ABSORB_MAX_RATIO, CHECK_FRAME, CHROMA_BINS, DINO_MIN, IDENTITY_MIN, MOVE_DISTANCE, OBJECT_LINK_SIM, OBJECT_MIN_POINTS, OUTPUT, RING_DISTINCT_SHARE, RING_MAX, RING_POINT_SIM, RING_RADIUS, UNIT_FLAG_SHARE, VISIBILITY_TOL, Z_WEAK
 from point_clouds import make_cloud
 from segment import render_check
 
@@ -90,7 +90,8 @@ def build_units(video, evidence, common_points):
         descriptor = describe(video, indices, video["points"])
         ring = surrounding_similarity(video, tree, indices, descriptor["feature"])
         distinct = distinct_share(video, tree, indices)
-        if (distinct >= RING_DISTINCT_SHARE) if RING_MODE == "points" else (ring <= RING_MAX):
+        both_evidence = evidence["geometric"][indices].mean() >= UNIT_FLAG_SHARE and z >= Z_WEAK  # partly seen through by the other video and clearly different where still matched: an empty footprint is surface present in both videos, so it cannot have both
+        if both_evidence or ((distinct >= RING_DISTINCT_SHARE) if RING_MODE == "points" else (ring <= RING_MAX)):
             units.append({"id": int(u), "indices": indices, "n": len(indices), "centroid": common_points[indices].mean(axis=0),
                           "flagged": flagged, "geometric": evidence["geometric"][indices].mean(), "z": z, "ring": ring, "distinct": distinct, **descriptor})
     return units
@@ -138,6 +139,31 @@ def render_best_frames(files, frames, out_path):
     cv2.imwrite(str(out_path), np.vstack(rows))
 
 
+def split_moved(units, verdict, pairs, videos, common, evidence):
+    """For every moved pair, split off the points of each unit that have no counterpart in its partner (no partner point with feature cosine of at least OBJECT_LINK_SIM): when segmentation merged two touching objects and only one of them moved, the other part is really removed (before) or added (after). A leftover smaller than OBJECT_MIN_POINTS stays with the moved unit. Edits units and verdict in place."""
+    original = {side: [u["indices"] for u in units[side]] for side in units}
+    next_id = {side: max([u["id"] for u in units[side]], default=0) + 1 for side in units}
+    for i, j in pairs:
+        for side, k, other, l in (("before", i, "after", j), ("after", j, "before", i)):
+            mine, theirs = original[side][k], original[other][l]
+            f = videos[side]["features"][mine]
+            g = videos[other]["features"][theirs]
+            f = f / np.maximum(np.linalg.norm(f, axis=1, keepdims=True), 1e-9)
+            g = g / np.maximum(np.linalg.norm(g, axis=1, keepdims=True), 1e-9)
+            best = np.concatenate([(f[a:a + 2000] @ g.T).max(axis=1) for a in range(0, len(f), 2000)])
+            leftover = mine[best < OBJECT_LINK_SIM]
+            if len(leftover) < OBJECT_MIN_POINTS or len(leftover) == len(mine):
+                continue
+            unit = units[side][k]
+            kept = mine[best >= OBJECT_LINK_SIM]
+            unit.update({"indices": kept, "n": len(kept), "centroid": common[side][kept].mean(axis=0), **describe(videos[side], kept, videos[side]["points"])})
+            units[side].append({"id": next_id[side], "indices": leftover, "n": len(leftover), "centroid": common[side][leftover].mean(axis=0),
+                                "flagged": evidence[side]["changed"][leftover].mean(), "geometric": evidence[side]["geometric"][leftover].mean(), "z": unit["z"],
+                                "ring": 0.0, "distinct": 1.0, **describe(videos[side], leftover, videos[side]["points"])})
+            verdict[side].append("removed" if side == "before" else "added")
+            next_id[side] += 1
+
+
 def export_verdicts(before, after, out_dir):
     """Label every changed unit moved (matched pair), removed (unmatched before) or added (unmatched after), write verdict clouds (grey, and true colour with the changed units in vivid blue/green/red) with check images (the overlay shown at each video's best frame), and print the decisions."""
     after_in_before, before_in_after = aligned_points(before, after)
@@ -150,6 +176,8 @@ def export_verdicts(before, after, out_dir):
     partner = {"before": {i: j for i, j in pairs}, "after": {j: i for i, j in pairs}}
     for i, j in pairs:
         verdict["before"][i] = verdict["after"][j] = "moved"
+    split_moved(units, verdict, pairs, {"before": before, "after": after}, {"before": before["points"], "after": after_in_before}, evidence)
+    score = np.pad(score, ((0, len(units["before"]) - score.shape[0]), (0, len(units["after"]) - score.shape[1])))  # split-off parts have no match score
 
     files, overlay_files, frames = {}, {}, {}
     records = {"before": [], "after": []}

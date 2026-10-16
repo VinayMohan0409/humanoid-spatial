@@ -18,9 +18,13 @@ LIVE_NOTE = (
 )
 
 
+FIRST = ("dining_table", "scene_diff_living_room", "desk")  # shown first, in this order; the rest follow alphabetically
+
+
 def scene_names():
-    """Return the scene folder names under examples/."""
-    return sorted(p.name for p in EXAMPLES.iterdir() if p.is_dir())
+    """Return the scene folder names under examples/, the FIRST ones leading."""
+    names = sorted(p.name for p in EXAMPLES.iterdir() if p.is_dir())
+    return [n for n in FIRST if n in names] + [n for n in names if n not in FIRST]
 
 
 def side_records(records, side):

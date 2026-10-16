@@ -116,8 +116,9 @@ def annotate_all():
     diagnose = OUTPUT / "diagnose"
     records = json.loads((diagnose / "verdicts.json").read_text())
     plain = diagnose / "verdict_colour_best_frames_plain.jpg"
-    if not plain.exists():  # keep the unlabelled picture, so this can be rerun
-        (diagnose / "verdict_colour_best_frames.jpg").rename(plain)
+    fresh = diagnose / "verdict_colour_best_frames.jpg"
+    if fresh.exists():  # a new picture from step 8 replaces the kept one; without one, the kept picture is reused so this can be rerun
+        fresh.replace(plain)
     image = cv2.imread(str(plain))
     rows = []
     for row, name in enumerate(VIDEOS):
